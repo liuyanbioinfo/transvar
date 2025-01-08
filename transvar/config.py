@@ -81,6 +81,9 @@ class CustomConfigParser(configparser.RawConfigParser):
         for section in self.sections():
             for key in self.options(section):
                 value = self.get(section, key)
+                # 跳过refversion
+                if key == "refversion":
+                    continue
                 if value and (value.startswith('./') or not os.path.isabs(value)):
                     # 获取配置文件所在的目录，并将相对路径转为绝对路径
                     abs_value = os.path.join(os.path.dirname(config_file_path), value)
