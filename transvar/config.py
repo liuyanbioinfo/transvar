@@ -58,6 +58,34 @@ def gunzip(fn):
     f_out.close()
     os.remove(fn)
 
+class CustomConfigParser(configparser.RawConfigParser):
+    def read(self, filenames, encoding=None):
+        """
+        重写 `read` 方法，在读取配置文件后，自动解析并修正其中的相对路径。
+        
+        参数：
+        filenames (str | list): 配置文件路径，可以是字符串或路径列表。
+        encoding (str): 可选的文件编码方式。
+        """
+        # 调用父类的 read 方法
+        super().read(filenames, encoding)
+
+        # 获取配置文件的绝对路径并解析相对路径
+        if isinstance(filenames, list):
+            # 如果是文件列表，选择第一个文件作为参考路径
+            config_file_path = os.path.abspath(filenames[0])
+        else:
+            config_file_path = os.path.abspath(filenames)
+
+        # 修改配置中的相对路径为绝对路径
+        for section in self.sections():
+            for key in self.options(section):
+                value = self.get(section, key)
+                if value and (value.startswith('./') or not os.path.isabs(value)):
+                    # 获取配置文件所在的目录，并将相对路径转为绝对路径
+                    abs_value = os.path.join(os.path.dirname(config_file_path), value)
+                    self.set(section, key, abs_value)
+
 cfg_fns = [
     os.path.expanduser(os.getenv('TRANSVAR_CFG', 
                                  os.path.join(os.path.dirname(__file__), 'transvar.cfg'))),
@@ -412,13 +440,13 @@ def download_anno_topic_ensembl(args, config):
     config.set('DEFAULT', 'refversion', rv)
 
 def read_config():
-    config = configparser.RawConfigParser()
+    config = CustomConfigParser()
     config.read(cfg_fns)
     return config
 
 def print_current(args):
 
-    config = configparser.RawConfigParser()
+    config = CustomConfigParser()
     config.read(cfg_fns)
 
     print("Configuration files to search:")
@@ -463,7 +491,7 @@ def print_current(args):
 def main_config(args):
 
 
-    config = configparser.RawConfigParser()
+    config = CustomConfigParser()
     config.read(cfg_fns)
     config_altered = False
 
